@@ -16,7 +16,9 @@ class TriviaApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Trivia Showdown',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+        ),
         useMaterial3: true,
       ),
       home: const TriviaScreen(),
@@ -37,6 +39,7 @@ class TriviaQuestion {
 
   factory TriviaQuestion.fromJson(Map<String, dynamic> json) {
     final correct = cleanText(json['correct_answer'] as String);
+
     final wrong = (json['incorrect_answers'] as List)
         .map((answer) => cleanText(answer as String))
         .toList();
@@ -51,6 +54,7 @@ class TriviaQuestion {
   }
 }
 
+// Cleans HTML characters returned by the trivia API.
 String cleanText(String text) {
   return text
       .replaceAll('&quot;', '"')
@@ -62,7 +66,13 @@ String cleanText(String text) {
       .replaceAll('&eacute;', 'é')
       .replaceAll('&ldquo;', '"')
       .replaceAll('&rdquo;', '"')
-      .replaceAll('&rsquo;', "'");
+      .replaceAll('&lsquo;', "'")
+      .replaceAll('&rsquo;', "'")
+      .replaceAll('&lrm;', '')
+      .replaceAll('&rlm;', '')
+      .replaceAll('&#8206;', '')
+      .replaceAll('&#8207;', '')
+      .replaceAll('&nbsp;', ' ');
 }
 
 class TriviaScreen extends StatefulWidget {
@@ -74,8 +84,10 @@ class TriviaScreen extends StatefulWidget {
 
 class _TriviaScreenState extends State<TriviaScreen> {
   List<TriviaQuestion> questions = [];
+
   int currentQuestion = 0;
   int score = 0;
+
   String? selectedAnswer;
   String? errorMessage;
 
@@ -89,6 +101,7 @@ class _TriviaScreenState extends State<TriviaScreen> {
     fetchQuestions();
   }
 
+  // Gets five trivia questions from the API.
   Future<void> fetchQuestions() async {
     setState(() {
       loading = true;
@@ -111,25 +124,34 @@ class _TriviaScreenState extends State<TriviaScreen> {
       );
 
       if (response.statusCode != 200) {
-        throw Exception('HTTP error: ${response.statusCode}');
+        throw Exception(
+          'HTTP error: ${response.statusCode}',
+        );
       }
 
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final data = jsonDecode(response.body)
+          as Map<String, dynamic>;
 
       if (data['response_code'] != 0) {
-        throw Exception('Trivia API could not return questions.');
+        throw Exception(
+          'Trivia API could not return questions.',
+        );
       }
 
       final results = data['results'] as List<dynamic>;
 
       if (results.length != 5) {
-        throw Exception('Expected five trivia questions.');
+        throw Exception(
+          'Expected five trivia questions.',
+        );
       }
 
       final loadedQuestions = results
-          .map((item) => TriviaQuestion.fromJson(
-                item as Map<String, dynamic>,
-              ))
+          .map(
+            (item) => TriviaQuestion.fromJson(
+              item as Map<String, dynamic>,
+            ),
+          )
           .toList();
 
       if (!mounted) return;
@@ -143,23 +165,27 @@ class _TriviaScreenState extends State<TriviaScreen> {
 
       setState(() {
         loading = false;
-        errorMessage = 'Could not load questions. $error';
+        errorMessage =
+            'Could not load questions. $error';
       });
     }
   }
 
+  // Checks the answer and updates the score.
   void chooseAnswer(String answer) {
     if (selectedAnswer != null) return;
 
     setState(() {
       selectedAnswer = answer;
 
-      if (answer == questions[currentQuestion].correctAnswer) {
+      if (answer ==
+          questions[currentQuestion].correctAnswer) {
         score++;
       }
     });
   }
 
+  // Moves to the next question.
   void nextQuestion() {
     setState(() {
       currentQuestion++;
@@ -167,6 +193,7 @@ class _TriviaScreenState extends State<TriviaScreen> {
     });
   }
 
+  // Simulates sending the final score to a server.
   Future<void> syncScore() async {
     if (syncing || synced) return;
 
@@ -180,8 +207,10 @@ class _TriviaScreenState extends State<TriviaScreen> {
       syncing = true;
     });
 
-    // Classroom simulation: no real backend request is made.
-    await Future.delayed(const Duration(seconds: 2));
+    // No real backend request is made.
+    await Future.delayed(
+      const Duration(seconds: 2),
+    );
 
     if (!mounted) return;
 
@@ -192,12 +221,18 @@ class _TriviaScreenState extends State<TriviaScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Simulated score sync: $payload'),
+        content: Text(
+          'Simulated score sync: $payload',
+        ),
       ),
     );
   }
 
-  Widget buildAnswerButton(String answer, TriviaQuestion question) {
+  // Creates the answer buttons.
+  Widget buildAnswerButton(
+    String answer,
+    TriviaQuestion question,
+  ) {
     Color? backgroundColor;
 
     if (selectedAnswer != null) {
@@ -209,7 +244,9 @@ class _TriviaScreenState extends State<TriviaScreen> {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(
+        vertical: 5,
+      ),
       child: SizedBox(
         width: double.infinity,
         child: ElevatedButton(
@@ -249,6 +286,7 @@ class _TriviaScreenState extends State<TriviaScreen> {
   }
 
   Widget buildContent() {
+    // Loading screen.
     if (loading) {
       return const Column(
         mainAxisSize: MainAxisSize.min,
@@ -260,6 +298,7 @@ class _TriviaScreenState extends State<TriviaScreen> {
       );
     }
 
+    // Error screen.
     if (errorMessage != null) {
       return Column(
         mainAxisSize: MainAxisSize.min,
@@ -277,6 +316,7 @@ class _TriviaScreenState extends State<TriviaScreen> {
       );
     }
 
+    // Final score screen.
     if (currentQuestion >= questions.length) {
       return Column(
         mainAxisSize: MainAxisSize.min,
@@ -301,7 +341,9 @@ class _TriviaScreenState extends State<TriviaScreen> {
           ),
           const SizedBox(height: 25),
           ElevatedButton(
-            onPressed: syncing || synced ? null : syncScore,
+            onPressed: syncing || synced
+                ? null
+                : syncScore,
             child: Text(
               syncing
                   ? 'Simulating Sync...'
@@ -327,6 +369,7 @@ class _TriviaScreenState extends State<TriviaScreen> {
       );
     }
 
+    // Current question screen.
     final question = questions[currentQuestion];
 
     return SingleChildScrollView(
@@ -339,7 +382,8 @@ class _TriviaScreenState extends State<TriviaScreen> {
           ),
           const SizedBox(height: 10),
           LinearProgressIndicator(
-            value: (currentQuestion + 1) / questions.length,
+            value: (currentQuestion + 1) /
+                questions.length,
           ),
           const SizedBox(height: 15),
           Text(
@@ -356,8 +400,12 @@ class _TriviaScreenState extends State<TriviaScreen> {
             ),
           ),
           const SizedBox(height: 20),
+
+          // Display all four answer choices.
           for (final answer in question.options)
             buildAnswerButton(answer, question),
+
+          // Show feedback after an answer is selected.
           if (selectedAnswer != null) ...[
             const SizedBox(height: 15),
             Text(
@@ -371,7 +419,8 @@ class _TriviaScreenState extends State<TriviaScreen> {
             ElevatedButton(
               onPressed: nextQuestion,
               child: Text(
-                currentQuestion == questions.length - 1
+                currentQuestion ==
+                        questions.length - 1
                     ? 'See Final Score'
                     : 'Next Question',
               ),
